@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#1f8f8a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>대전사랑카드 주유소</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+:root{--teal:#1f8f8a;--teal-d:#16706c;--bg:#f4f6f7;--ink:#1d2327;--line:#e3e7ea}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;font-family:-apple-system,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;color:var(--ink);background:var(--bg)}
+body{display:flex;flex-direction:column;padding-top:env(safe-area-inset-top)}
+header{background:var(--teal);color:#fff;padding:10px 14px;display:flex;align-items:center;gap:10px}
+header .ttl{flex:1;min-width:0}
+header h1{font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0;font-weight:700}
+header .dt{font-size:11.5px;opacity:.9;margin-top:1px;white-space:nowrap}
+header button{border:0;border-radius:18px;padding:7px 10px;font-size:14px;font-weight:600;background:#fff;color:var(--teal-d)}
+#status{font-size:12.5px;padding:6px 14px;background:#e9f4f3;color:var(--teal-d);border-bottom:1px solid var(--line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#map{height:46vh;min-height:240px;flex:none;position:relative}
+.legend{position:absolute;right:8px;top:8px;z-index:500;background:rgba(255,255,255,.92);border-radius:8px;padding:5px 8px;font-size:11.5px;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.legend i{display:inline-block;border-radius:50%;margin:0 3px 0 6px;vertical-align:-1px}
+.bar{display:flex;gap:6px;padding:8px 12px;background:#fff;border-bottom:1px solid var(--line);overflow-x:auto}
+.lbl{flex:none;font-size:13px;font-weight:700;color:var(--teal-d);align-self:center;padding-right:2px}
+.chip{flex:none;border:1px solid var(--line);background:#fff;border-radius:16px;padding:5px 11px;font-size:13px;color:#444}
+.chip.on{background:var(--teal);border-color:var(--teal);color:#fff}
+#list{flex:1;overflow-y:auto;padding-bottom:env(safe-area-inset-bottom)}
+.row{background:#fff;border-bottom:1px solid var(--line);padding:0 8px 0 12px;height:44px;display:flex;align-items:center;gap:8px;font-size:14px;white-space:nowrap}
+.row.sel{background:#eef8f7}
+.row .d{flex:none;width:50px;text-align:right;font-weight:700;color:var(--teal-d)}
+.row .d.na{font-weight:500;color:#999;font-size:11.5px}
+.row .n{flex:none;max-width:42%;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+.row .a{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;color:#6b737a;font-size:12.5px}
+.row .go{flex:none;text-decoration:none;font-size:11.5px;font-weight:600;border-radius:5px;padding:3px 6px}
+.row .go.k{background:#fee500;color:#3c1e1e}
+.row .go.nv{background:#03c75a;color:#fff}
+.pn{display:block;font-weight:700;font-size:14px;color:var(--teal-d);text-decoration:none;padding:3px 0}
+.pn.x{color:#333;font-weight:600}
+.pn+.pn{border-top:1px solid #eee}
+.me{width:16px;height:16px;border-radius:50%;background:#2a7de1;border:3px solid #fff;box-shadow:0 0 0 2px rgba(42,125,225,.35)}
+.pin{width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:var(--teal);border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center}
+.pin span{transform:rotate(45deg);color:#fff;font-size:11px;font-weight:700}
+.leaflet-popup-content{margin:10px 12px;font-size:13px;line-height:1.45}
+.act{font-size:12.5px;text-decoration:none;border:1px solid var(--teal);color:var(--teal-d);border-radius:5px;padding:2px 7px;display:inline-block;margin-top:4px}
+.foot{font-size:11.5px;color:#7a8288;padding:12px 14px 20px;line-height:1.5}
+</style>
+</head>
+<body>
+<header><div class="ttl"><h1>⛽ 대전사랑카드 주유소</h1><div class="dt" id="dataDate"></div></div><button id="homeBtn">🏟 운동장</button><button id="locBtn">📍 내 위치</button></header>
+<div id="status">위치를 확인하는 중…</div>
+<div id="map"><div class="legend"><i style="background:#1f8f8a;width:10px;height:10px"></i>캐시백 제공<i style="background:#222;width:7px;height:7px"></i>미제공</div></div>
+<div class="bar">
+  <span class="lbl">캐시백 주유소</span>
+  <button class="chip on" data-f="all">전체</button>
+  <button class="chip" data-f="3">3km 이내</button>
+  <button class="chip" data-f="5">5km 이내</button>
+</div>
+<div id="list"></div>
+<script>
+// 데이터: 같은 폴더의 stations.csv(또는 아래 DATA_URL)를 읽고, 못 읽으면 내장 데이터를 쓴다.
+// 구글 시트를 "웹에 게시 → CSV"로 공개했다면 그 주소를 DATA_URL에 넣으면 시트만 고쳐도 반영된다.
+const DATA_URL = 'stations.csv';
+const EMBEDDED = [{"n": "지에스칼텍스(주)21세기주유소", "p": "02-2005-1875", "a": "대전 유성구 유성대로 845", "c": 0, "lat": 36.367262, "lng": 127.338881}, {"n": "한밭대로주유소", "p": "042-823-5152", "a": "대전 유성구 한밭대로 305", "c": 0, "lat": 36.365895, "lng": 127.334751}, {"n": "(주)유성하나로주유소", "p": "042-825-5149", "a": "대전 유성구 한밭대로 295", "c": 0, "lat": 36.366348, "lng": 127.333397}, {"n": "지에스칼텍스(주)정다운주유소", "p": "02-2005-1874", "a": "대전 유성구 북유성대로 51", "c": 0, "lat": 36.371169, "lng": 127.326512}, {"n": "지에스칼텍스(주)충대앞주유소", "p": "042-823-5066", "a": "대전 유성구 대학로 85", "c": 0, "lat": 36.361231, "lng": 127.343776}, {"n": "SK네트웍스(주)첨단주유소", "p": "042-861-6708", "a": "대전 유성구 가정로 27", "c": 0, "lat": 36.384621, "lng": 127.346346}, {"n": "첨단셀프주유소", "p": "042-861-6708", "a": "대전 유성구 가정로 27", "c": 0, "lat": 36.384621, "lng": 127.346346}, {"n": "(주)선일장대주유소", "p": "042-825-6696", "a": "대전 유성구 유성대로 768", "c": 0, "lat": 36.360593, "lng": 127.336143}, {"n": "(주)에스엘 성림주유소", "p": "042-638-9219", "a": "대전 유성구 유성대로752번길 2", "c": 0, "lat": 36.359515, "lng": 127.334641}, {"n": "현대오일뱅크(주)직영 노은주유소", "p": "042-477-5182", "a": "대전 유성구 노은동로 79", "c": 0, "lat": 36.367601, "lng": 127.322942}, {"n": "KH에너지(주)직영 하이웨이주유소", "p": "042-822-5100", "a": "대전 유성구 현충원로 531", "c": 0, "lat": 36.358929, "lng": 127.329738}, {"n": "위성주유소", "p": "042-825-5145", "a": "대전 유성구 현충원로 489", "c": 0, "lat": 36.35971, "lng": 127.325126}, {"n": "(주)하나주유소", "p": "042-867-5151", "a": "대전 유성구 유성대로 1127", "c": 0, "lat": 36.391345, "lng": 127.346539}, {"n": "우진주유소", "p": "042-823-9606", "a": "대전 유성구 유성대로654번길 1", "c": 1, "lat": 36.35247, "lng": 127.329633}, {"n": "(주)구암상사주유소", "p": "042-825-6162", "a": "대전 유성구 유성대로654번길 32", "c": 1, "lat": 36.351638, "lng": 127.330664}, {"n": "SK네트웍스(주)만년교주유소", "p": "042-523-3424", "a": "대전 서구 계룡로 202", "c": 0, "lat": 36.350551, "lng": 127.352627}, {"n": "SK네트웍스(주)세종주유소", "p": "042-826-8109", "a": "대전 유성구 북유성대로 288", "c": 0, "lat": 36.390785, "lng": 127.316217}, {"n": "SK에너지(주)유공셀프주유소", "p": "042-825-1658", "a": "대전 유성구 유성대로 614", "c": 0, "lat": 36.349004, "lng": 127.32705}, {"n": "신성주유소", "p": "042-861-0896", "a": "대전 유성구 가정북로 163", "c": 0, "lat": 36.396163, "lng": 127.355375}, {"n": "SK에너지(주) 예성주유소", "p": "042-822-6556", "a": "대전 유성구 도안동로 488", "c": 0, "lat": 36.347688, "lng": 127.348396}, {"n": "(주)상익유성주유소", "p": "042-825-2452", "a": "대전 유성구 현충원로 342", "c": 0, "lat": 36.359229, "lng": 127.308554}, {"n": "중동주유소", "p": "042-533-7088", "a": "대전 서구 계룡로 344", "c": 1, "lat": 36.35372, "lng": 127.367156}, {"n": "지에스칼텍스(주)GS사이언스주유소", "p": "042-861-7766", "a": "대전 유성구 대덕대로 539", "c": 0, "lat": 36.381015, "lng": 127.378299}, {"n": "지에스칼텍스(주)덕명주유소", "p": "02-2005-1875", "a": "대전 유성구 현충원로 283", "c": 0, "lat": 36.360689, "lng": 127.302551}, {"n": "중도석유(주)대덕주유소", "p": "042-482-3890", "a": "대전 서구 월평북로 84", "c": 0, "lat": 36.362026, "lng": 127.37768}, {"n": "SK네트웍스(주)엑스포주유소", "p": "042-863-6692", "a": "대전 유성구 대덕대로 542", "c": 0, "lat": 36.381403, "lng": 127.378867}, {"n": "SK에너지(주) 엑스포주유소", "p": "042-863-6692", "a": "대전 유성구 대덕대로 542", "c": 0, "lat": 36.381403, "lng": 127.378867}, {"n": "대양석유(주)엑스포주유소", "p": "042-863-6692", "a": "대전 유성구 대덕대로 542", "c": 0, "lat": 36.381403, "lng": 127.378867}, {"n": "삼정주유소", "p": "042-488-3326", "a": "대전 서구 대덕대로 384", "c": 1, "lat": 36.367048, "lng": 127.38001}, {"n": "SK자운셀프주유소", "p": "", "a": "대전 유성구 자운로157번길 122", "c": 0, "lat": 36.4073, "lng": 127.33886}, {"n": "(주)학하 학하셀프주유소", "p": "070-4187-4546", "a": "대전 유성구 학하로 189", "c": 0, "lat": 36.344813, "lng": 127.314146}, {"n": "갈마주유소", "p": "042-526-0890", "a": "대전 서구 신갈마로 130", "c": 0, "lat": 36.345343, "lng": 127.36887}, {"n": "지에스칼텍스(주)북유성IC주유소", "p": "042-823-5150", "a": "대전 유성구 북유성대로 408", "c": 0, "lat": 36.400647, "lng": 127.30932}, {"n": "(주)퍼스트오일현충원주유소", "p": "", "a": "대전 유성구 현충원로 213", "c": 0, "lat": 36.360538, "lng": 127.294872}, {"n": "필승주유소", "p": "", "a": "대전 유성구 현충원로 201", "c": 1, "lat": 36.36049, "lng": 127.293336}, {"n": "화암동셀프주유소", "p": "042-863-6643", "a": "대전 유성구 대덕대로 804", "c": 0, "lat": 36.401783, "lng": 127.374967}, {"n": "계룡주유소", "p": "042-822-5111", "a": "대전 유성구 현충원로 177", "c": 1, "lat": 36.360547, "lng": 127.290872}, {"n": "한밭대앞Self주유소", "p": "042-525-5151", "a": "대전 유성구 학하서로 111", "c": 1, "lat": 36.347453, "lng": 127.299506}, {"n": "극동유화(주)한밭주유소", "p": "042-471-5189", "a": "대전 서구 문정로 3", "c": 0, "lat": 36.345286, "lng": 127.380262}, {"n": "중도석유주식회사월드컵주유소", "p": "042-483-5760", "a": "대전 서구 문정로 12", "c": 0, "lat": 36.345343, "lng": 127.38151}, {"n": "씨앤에스유통(주)구도일주유소 도…", "p": "042-545-2227", "a": "대전 서구 도안동로 277", "c": 0, "lat": 36.329569, "lng": 127.347428}, {"n": "그린주유소(주)", "p": "042-534-5301", "a": "대전 서구 동서대로 953", "c": 0, "lat": 36.334708, "lng": 127.368671}, {"n": "KH에너지(주)직영 둔산주유소", "p": "042-484-5531", "a": "대전 서구 둔산로 139", "c": 0, "lat": 36.351559, "lng": 127.389519}, {"n": "북대전주유소", "p": "042-864-2207", "a": "대전 유성구 유성대로 1495", "c": 1, "lat": 36.409546, "lng": 127.380396}, {"n": "(주)황제주유소", "p": "042-861-5558", "a": "대전 유성구 대덕대로 934", "c": 0, "lat": 36.412158, "lng": 127.378607}, {"n": "제이에너지(주)대덕밸리주유소", "p": "070-4288-5151", "a": "대전 유성구 대덕대로 938", "c": 1, "lat": 36.412456, "lng": 127.378568}, {"n": "케이케이(주) 대전중앙주유소", "p": "042-862-2631", "a": "대전 유성구 유성대로 1647", "c": 1, "lat": 36.400597, "lng": 127.392265}, {"n": "괴정주유소", "p": "042-533-7142", "a": "대전 서구 괴정로 113", "c": 1, "lat": 36.337793, "lng": 127.38561}, {"n": "(주)에너비즈 명품주유소", "p": "042-521-0051", "a": "대전 서구 배재로 218", "c": 0, "lat": 36.327837, "lng": 127.370891}, {"n": "디에스 주유소", "p": "", "a": "대전 서구 배재로 210", "c": 1, "lat": 36.327198, "lng": 127.370898}, {"n": "배재로주유소(주)", "p": "042-528-8908", "a": "대전 서구 배재로 210", "c": 1, "lat": 36.327198, "lng": 127.370898}, {"n": "구도일태전주유소", "p": "042-863-5104", "a": "대전 유성구 엑스포로 259", "c": 0, "lat": 36.379887, "lng": 127.406087}, {"n": "선인에너지(주) 강변주유소", "p": "042-862-5778", "a": "대전 유성구 엑스포로 293", "c": 0, "lat": 36.382288, "lng": 127.405703}, {"n": "백산주유소", "p": "042-534-4678", "a": "대전 서구 동서대로 1068", "c": 1, "lat": 36.32929, "lng": 127.379342}, {"n": "대성주유소", "p": "042-864-5155", "a": "대전 유성구 아리랑로 12", "c": 0, "lat": 36.379415, "lng": 127.407752}, {"n": "대양석유(주)내동주유소", "p": "042-533-2838", "a": "대전 서구 동서대로 1081", "c": 1, "lat": 36.329089, "lng": 127.381031}, {"n": "오정동SM셀프주유소", "p": "", "a": "대전 대덕구 오정로 123", "c": 0, "lat": 36.355878, "lng": 127.405823}, {"n": "(유)용명에너지 신대전셀프주유소", "p": "", "a": "대전 서구 도산로 213", "c": 0, "lat": 36.327399, "lng": 127.379944}, {"n": "(주)에너비즈둔산주유소", "p": "042-487-7090", "a": "대전 서구 유등로 667", "c": 0, "lat": 36.34652, "lng": 127.401391}, {"n": "맘모스주유소", "p": "", "a": "대전 대덕구 동서대로 1756", "c": 0, "lat": 36.352428, "lng": 127.443278}, {"n": "코끼리셀프주유소", "p": "", "a": "대전 서구 도산로 446", "c": 0, "lat": 36.341861, "lng": 127.39851}, {"n": "탄방주유소", "p": "042-487-9005", "a": "대전 서구 유등로 659", "c": 1, "lat": 36.345879, "lng": 127.401385}, {"n": "우리하나에너지(주)우리셀프주유소", "p": "", "a": "대전 서구 동서대로 1120", "c": 0, "lat": 36.328053, "lng": 127.384796}, {"n": "원촌주유소", "p": "042-633-6330", "a": "대전 대덕구 아리랑로 55", "c": 0, "lat": 36.377538, "lng": 127.411755}, {"n": "은빛주유소", "p": "042-631-5104", "a": "대전 대덕구 아리랑로 70", "c": 0, "lat": 36.376322, "lng": 127.412452}, {"n": "(주) 차세대주유소", "p": "042-626-5051", "a": "대전 대덕구 아리랑로 73", "c": 1, "lat": 36.376651, "lng": 127.413244}, {"n": "삼육주유소", "p": "042-257-3636", "a": "대전 중구 대전천서로 757", "c": 1, "lat": 36.347818, "lng": 127.406849}, {"n": "주식회사연정(농수산주유소)", "p": "042-635-1588", "a": "대전 대덕구 한밭대로 1014", "c": 0, "lat": 36.35783, "lng": 127.411292}, {"n": "(주)회덕아이씨주유소충전소", "p": "042-672-5151", "a": "대전 대덕구 갑천도시고속도로 1084", "c": 1, "lat": 36.391042, "lng": 127.412665}, {"n": "씨앤에스유통(주)회덕아이씨주유소", "p": "031-269-5101", "a": "대전 대덕구 갑천도시고속도로 1084", "c": 0, "lat": 36.391042, "lng": 127.412665}, {"n": "개나리주유소", "p": "042-631-4466", "a": "대전 대덕구 오정로 53", "c": 1, "lat": 36.351485, "lng": 127.411174}, {"n": "도마진실주유소", "p": "", "a": "대전 서구 도산로 123", "c": 0, "lat": 36.319625, "lng": 127.3774}, {"n": "한솔주유소", "p": "042-622-6680", "a": "대전 대덕구 한밭대로 1036", "c": 1, "lat": 36.357918, "lng": 127.413675}, {"n": "현대셀프주유소", "p": "042-535-0885", "a": "대전 서구 변동로 114", "c": 1, "lat": 36.32331, "lng": 127.385128}, {"n": "금성주유소", "p": "042-525-1883", "a": "대전 중구 동서대로 1183", "c": 1, "lat": 36.327008, "lng": 127.391684}, {"n": "(주)갑천에너지갑천주유소", "p": "042-635-4062", "a": "대전 대덕구 아리랑로55번길 189", "c": 0, "lat": 36.393004, "lng": 127.413491}, {"n": "배재주유소", "p": "043-532-5700", "a": "대전 서구 도솔5길 5", "c": 1, "lat": 36.315905, "lng": 127.372965}, {"n": "중도석유(주)오정동주유소", "p": "042-672-4843", "a": "대전 대덕구 대전로 1144", "c": 0, "lat": 36.356657, "lng": 127.41543}, {"n": "당산주유소", "p": "042-622-2133", "a": "대전 대덕구 아리랑로 135", "c": 1, "lat": 36.374147, "lng": 127.419624}, {"n": "SK에너지(주) 교촌주유소", "p": "042-546-8811", "a": "대전 유성구 유성대로 142", "c": 0, "lat": 36.310844, "lng": 127.317982}, {"n": "공단주유소", "p": "042-628-3645", "a": "대전 대덕구 대전로 1285", "c": 0, "lat": 36.368511, "lng": 127.419606}, {"n": "(주)남강OK주유소", "p": "042-633-8757", "a": "대전 대덕구 대전로 1312", "c": 0, "lat": 36.370925, "lng": 127.420792}, {"n": "장터주유소", "p": "042-632-3351", "a": "대전 대덕구 아리랑로 152", "c": 1, "lat": 36.372998, "lng": 127.420539}, {"n": "SK청정주유소", "p": "042-536-5151", "a": "대전 중구 계룡로 756", "c": 1, "lat": 36.33094, "lng": 127.401764}, {"n": "현대오일뱅크(주)송강주유소", "p": "042-935-4064", "a": "대전 유성구 대덕대로 1131", "c": 0, "lat": 36.428071, "lng": 127.385479}, {"n": "라자로주유소", "p": "042-632-5151", "a": "대전 대덕구 대전로 1390", "c": 0, "lat": 36.37752, "lng": 127.421802}, {"n": "(주)에너비즈삼성주유소", "p": "042-537-5189", "a": "대전 중구 계룡로 778", "c": 0, "lat": 36.329413, "lng": 127.403472}, {"n": "(주)선인에너지쌍용주유소", "p": "042-628-0088", "a": "대전 대덕구 신탄진로 83", "c": 0, "lat": 36.388218, "lng": 127.421622}, {"n": "남선석유(주)계백셀프주유소", "p": "042-534-5032", "a": "대전 서구 계백로 1327", "c": 0, "lat": 36.309776, "lng": 127.369609}, {"n": "씨앤에스유통(주) 호수공원주유소", "p": "042-534-5189", "a": "대전 서구 계백로 1259", "c": 0, "lat": 36.30762, "lng": 127.362711}, {"n": "중도석유도마동주유소", "p": "042-523-0589", "a": "대전 서구 계백로 1371", "c": 0, "lat": 36.310842, "lng": 127.374355}, {"n": "(주)대림주유소", "p": "042-586-5102", "a": "대전 서구 계백로 1290", "c": 0, "lat": 36.307884, "lng": 127.366222}, {"n": "굿모닝주유소", "p": "042-583-5182", "a": "대전 서구 계백로 1376", "c": 0, "lat": 36.31062, "lng": 127.375351}, {"n": "(주)가수원주유소", "p": "042-543-5189", "a": "대전 서구 계백로 1176", "c": 1, "lat": 36.305042, "lng": 127.354189}, {"n": "소태산주유소", "p": "042-636-4438", "a": "대전 대덕구 신탄진로 163", "c": 0, "lat": 36.395384, "lng": 127.421757}, {"n": "서대전농협주유소", "p": "042-535-9251", "a": "대전 중구 계백로 1555", "c": 0, "lat": 36.317609, "lng": 127.392987}, {"n": "(주)에스엠넷 대전이데아주유소", "p": "042-633-7186", "a": "대전 대덕구 한밭대로 1145", "c": 0, "lat": 36.359195, "lng": 127.425628}, {"n": "(주)혜천셀프주유소", "p": "042-587-5189", "a": "대전 서구 혜천로 28", "c": 0, "lat": 36.30667, "lng": 127.369889}, {"n": "관저주유소", "p": "042-541-4202", "a": "대전 유성구 계백로 975", "c": 0, "lat": 36.30194, "lng": 127.332182}, {"n": "태성주유소", "p": "042-252-5189", "a": "대전 중구 동서대로 1459", "c": 0, "lat": 36.33758, "lng": 127.416804}, {"n": "서남부주유소", "p": "042-542-5189", "a": "대전 유성구 유성대로 40", "c": 0, "lat": 36.302126, "lng": 127.322138}, {"n": "으뜸회덕주유소", "p": "042-628-1496", "a": "대전 대덕구 신탄진로 222", "c": 0, "lat": 36.400389, "lng": 127.42347}, {"n": "지에스칼텍스(주)현암주유소", "p": "042-634-3151", "a": "대전 동구 동서대로 1494", "c": 0, "lat": 36.339322, "lng": 127.419966}, {"n": "케이피에스 서대전아이씨 롯데마트 주유소", "p": "", "a": "대전 유성구 유성대로26-37", "c": 0, "lat": 36.30051, "lng": 127.324776}, {"n": "거북이주유소", "p": "042-584-8251", "a": "대전 중구 문화로 35", "c": 1, "lat": 36.310608, "lng": 127.389805}, {"n": "대양석유(주)중리주유소", "p": "", "a": "대전 대덕구 한밭대로 1186", "c": 1, "lat": 36.358694, "lng": 127.430475}, {"n": "SK네트웍스(주) 진잠주유소", "p": "042-545-5151", "a": "대전 유성구 계백로 899", "c": 0, "lat": 36.29949, "lng": 127.323781}, {"n": "지에스칼텍스(주)구봉산셀프주유소", "p": "042-256-8333", "a": "대전 서구 구봉로 208", "c": 0, "lat": 36.297586, "lng": 127.345582}, {"n": "구봉산셀프주유소-세차장", "p": "042-256-8333", "a": "대전 서구 구봉로 208", "c": 1, "lat": 36.297586, "lng": 127.345582}, {"n": "동성주유소", "p": "041-572-8730", "a": "대전 중구 문화로 97", "c": 1, "lat": 36.312398, "lng": 127.39657}, {"n": "유원주유소", "p": "042-672-3613", "a": "대전 동구 계족로 513", "c": 0, "lat": 36.357476, "lng": 127.432352}, {"n": "용전셀프주유소", "p": "", "a": "대전 동구 동서대로 1627", "c": 1, "lat": 36.347056, "lng": 127.430738}, {"n": "동일석유 (주) 대전주유소", "p": "042-673-8880", "a": "대전 동구 계족로 436", "c": 0, "lat": 36.350634, "lng": 127.432696}, {"n": "(주)학하삼성셀프주유소", "p": "042-637-5566", "a": "대전 동구 대전로 908", "c": 0, "lat": 36.339718, "lng": 127.427748}, {"n": "에스케이주홍셀프주유소", "p": "042-621-5185", "a": "대전 대덕구 신탄진로 383", "c": 1, "lat": 36.41392, "lng": 127.423675}, {"n": "우리원 셀프주유소", "p": "", "a": "대전 대덕구 신탄진로 383", "c": 1, "lat": 36.41392, "lng": 127.423675}, {"n": "행복가득주유소", "p": "042-586-5188", "a": "대전 중구 보문산로 86", "c": 1, "lat": 36.305288, "lng": 127.38992}, {"n": "(주)에스에이치에너지와동셀프주유소", "p": "042-710-0609", "a": "대전 대덕구 신탄진로 386", "c": 1, "lat": 36.414387, "lng": 127.424342}, {"n": "케이에이치(KH)에너지(주)직영태양주유소", "p": "042-624-5122", "a": "대전 동구 한밭대로 1258", "c": 0, "lat": 36.35554, "lng": 127.436209}, {"n": "비전운수(주)산업단지주유소", "p": "042-935-5111", "a": "대전 대덕구 산업단지로 107", "c": 1, "lat": 36.429933, "lng": 127.410023}, {"n": "(주)남강 중앙로셀프주유소", "p": "042-256-0238", "a": "대전 중구 중앙로 64", "c": 0, "lat": 36.32425, "lng": 127.419288}, {"n": "SK네트웍스(주)동남주유소", "p": "042-931-0050", "a": "대전 대덕구 신탄진로 470", "c": 0, "lat": 36.421409, "lng": 127.419985}, {"n": "대덕주유소", "p": "042-931-0050", "a": "대전 대덕구 신탄진로 470", "c": 0, "lat": 36.421409, "lng": 127.419985}, {"n": "현대오일뱅크(주)직영 대덕주유소", "p": "042-931-0050", "a": "대전 대덕구 신탄진로 470", "c": 0, "lat": 36.421409, "lng": 127.419985}, {"n": "재하주유소", "p": "042-626-6626", "a": "대전 동구 동서대로 1664", "c": 1, "lat": 36.348119, "lng": 127.43491}, {"n": "신일주유소", "p": "042-936-5145", "a": "대전 대덕구 산업단지로 112", "c": 1, "lat": 36.431002, "lng": 127.409644}, {"n": "오월드주유소", "p": "", "a": "대전 중구 대둔산로 359", "c": 0, "lat": 36.301336, "lng": 127.385623}, {"n": "충남주유소", "p": "042-256-0101", "a": "대전 중구 대흥로 80", "c": 1, "lat": 36.323085, "lng": 127.421484}, {"n": "상서주유소", "p": "042-931-8097", "a": "대전 대덕구 신탄진로 519", "c": 1, "lat": 36.425375, "lng": 127.419607}, {"n": "대광주유소", "p": "042-935-6667", "a": "대전 유성구 금남구즉로 1355", "c": 0, "lat": 36.447957, "lng": 127.384596}, {"n": "아원주유소", "p": "042-625-2928", "a": "대전 동구 계족로 326", "c": 0, "lat": 36.341484, "lng": 127.435849}, {"n": "순우리주유소", "p": "042-931-5181", "a": "대전 대덕구 신탄진로 533", "c": 1, "lat": 36.426622, "lng": 127.419741}, {"n": "신탄진(상)휴게소 주유소 재향군인회", "p": "042-934-2445", "a": "대전 대덕구 산업단지로 27", "c": 0, "lat": 36.426758, "lng": 127.418552}, {"n": "금강주유소", "p": "", "a": "대전 대덕구 신탄진로 536", "c": 0, "lat": 36.426857, "lng": 127.420989}, {"n": "(주)이선 광장셀프주유소", "p": "042-623-2368", "a": "대전 동구 계족로 305", "c": 0, "lat": 36.339448, "lng": 127.436387}, {"n": "도서관셀프주유소", "p": "042-581-2184", "a": "대전 중구 보문산로 353", "c": 1, "lat": 36.313762, "lng": 127.415462}, {"n": "소망주유소", "p": "042-584-0413", "a": "대전 중구 보문산로 307", "c": 0, "lat": 36.31082, "lng": 127.411882}, {"n": "용은주유소", "p": "042-936-0068", "a": "대전 대덕구 신탄진로 559", "c": 0, "lat": 36.428962, "lng": 127.420859}, {"n": "동물원주유소", "p": "042-587-5151", "a": "대전 중구 대둔산로 270", "c": 0, "lat": 36.293738, "lng": 127.383684}, {"n": "안영셀프주유소", "p": "042-586-5146", "a": "대전 중구 대둔산로 241", "c": 0, "lat": 36.291662, "lng": 127.381553}, {"n": "현대오일뱅크(주)직영 대덕산단주유소", "p": "042-933-0115", "a": "대전 대덕구 문평동로 2", "c": 0, "lat": 36.445446, "lng": 127.404416}, {"n": "동광장셀프주유소", "p": "", "a": "대전 동구 중앙로 280", "c": 1, "lat": 36.333166, "lng": 127.439293}, {"n": "하나로주유소", "p": "042-581-5189", "a": "대전 중구 안영동 673-1", "c": 0, "lat": 36.289271, "lng": 127.380166}, {"n": "(주)농협유통 하나로주유소", "p": "042-580-5026", "a": "대전 중구 대둔산로199번길 43", "c": 0, "lat": 36.288591, "lng": 127.378446}, {"n": "현대오일뱅크(주)직영 4공단주유소", "p": "042-935-6051", "a": "대전 대덕구 대덕대로 1412", "c": 0, "lat": 36.445824, "lng": 127.40689}, {"n": "신탄진농협 주유소", "p": "042-932-5736", "a": "대전 대덕구 덕암로 164", "c": 0, "lat": 36.435318, "lng": 127.422463}, {"n": "구도일주유소 스마일", "p": "042-933-0907", "a": "대전 대덕구 신탄진로 622", "c": 0, "lat": 36.433741, "lng": 127.424622}, {"n": "안영IC주유소", "p": "042-584-5145", "a": "대전 중구 대둔산로 188", "c": 0, "lat": 36.287148, "lng": 127.378971}, {"n": "현대정유(주)충무주유소", "p": "042-221-8787", "a": "대전 중구 충무로 141", "c": 0, "lat": 36.319994, "lng": 127.432266}, {"n": "두바이주유소 도안씨티(주)", "p": "042-242-5250", "a": "대전 중구 보문로 117", "c": 1, "lat": 36.314038, "lng": 127.427934}, {"n": "리치주유소", "p": "", "a": "대전 중구 보문로 117", "c": 1, "lat": 36.314038, "lng": 127.427934}, {"n": "일등주유소", "p": "042-822-2307", "a": "대전 대덕구 신탄진로 636", "c": 0, "lat": 36.435043, "lng": 127.425406}, {"n": "우리셋셀프주유소", "p": "042-581-0678", "a": "대전 중구 대둔산로 150", "c": 0, "lat": 36.284575, "lng": 127.376781}, {"n": "신탄진IC주유소", "p": "042-932-7888", "a": "대전 대덕구 신탄진로 665", "c": 0, "lat": 36.437523, "lng": 127.425778}, {"n": "대성주유소", "p": "042-628-5180", "a": "대전 대덕구 덕암로 219", "c": 0, "lat": 36.440095, "lng": 127.423407}, {"n": "SK네트웍스(주)호성주유소", "p": "042-932-4611", "a": "대전 대덕구 신탄진로681번길 22", "c": 0, "lat": 36.439375, "lng": 127.425222}, {"n": "(주)학하 목상셀프주유소", "p": "070-7722-5153", "a": "대전 대덕구 대덕대로 1500", "c": 0, "lat": 36.449391, "lng": 127.414963}, {"n": "대도주유소", "p": "042-933-2068", "a": "대전 대덕구 신탄진로756번길 2", "c": 1, "lat": 36.444599, "lng": 127.429849}, {"n": "성찬셀프주유소", "p": "042-536-6217", "a": "대전 대덕구 신탄진로 764", "c": 0, "lat": 36.445645, "lng": 127.429916}, {"n": "(주)서대전 IC self 주유소", "p": "042-544-8811", "a": "대전 유성구 계백로 476", "c": 0, "lat": 36.276135, "lng": 127.293662}, {"n": "대전북부새마을금고주유소", "p": "042-933-5182", "a": "대전 대덕구 신탄진로 792", "c": 0, "lat": 36.448184, "lng": 127.429783}, {"n": "하이오일(주)신탄진알뜰주유소", "p": "042-932-3000", "a": "대전 대덕구 대덕대로1527번길 374", "c": 0, "lat": 36.45348, "lng": 127.428374}, {"n": "와동주유소", "p": "042-826-0601", "a": "대전 대덕구 신탄진로 386", "c": 1, "lat": 36.414387, "lng": 127.424342}, {"n": "(주)방동주유소", "p": "042-825-5007", "a": "대전 유성구 계백로 139", "c": 1, "lat": 36.274443, "lng": 127.267393}, {"n": "햇빛주유소", "p": "042-825-6266", "a": "대전 유성구 계백로 87", "c": 1, "lat": 36.276549, "lng": 127.261775}];
+let STATIONS = EMBEDDED;
+let DATA_SRC = '내장 데이터';
+let DATA_DATE = '2026-11-18';   // 데이터 기준일 (CSV 첫 줄 '기준일,YYYY-MM-DD'가 있으면 그 값으로 바뀜)
+function showDate() {
+  const m = DATA_DATE.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+  document.getElementById('dataDate').textContent = m ? `${m[1]}년 ${+m[2]}월 ${+m[3]}일 기준 데이터입니다` : (DATA_DATE ? DATA_DATE + ' 기준 데이터입니다' : '');
+}
+// 초기 기준 위치: 연구단지 운동장(구글 지도 표기 '사이언스대덕종합운동장', 대전 유성구)
+const HOME = {lat: 36.384787, lng: 127.356453, name: '연구단지 운동장'};
+let me = null, filter = 'all', selected = null;
+
+const map = L.map('map', {zoomControl: false}).setView([HOME.lat, HOME.lng], 13);
+// 바탕지도: 브이월드(국토교통부). 타일을 못 받아오면 OpenStreetMap으로 자동 전환
+const VWORLD_KEY = 'F5DA2D48-C945-4E65-A83E-0E390C9E2309';
+const vworld = L.tileLayer(`https://api.vworld.kr/req/wmts/1.0.0/${VWORLD_KEY}/Base/{z}/{y}/{x}.png`, {
+  minZoom: 6, maxZoom: 19, attribution: '&copy; <a href="https://www.vworld.kr" target="_blank" rel="noopener">브이월드(국토교통부)</a>'});
+const osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'});
+let vwOk = 0, vwErr = 0;
+vworld.on('tileload', () => vwOk++);
+vworld.on('tileerror', () => { if (++vwErr >= 3 && vwOk === 0 && map.hasLayer(vworld)) { map.removeLayer(vworld); osm.addTo(map); } });
+vworld.addTo(map);
+const dotLayer = L.layerGroup().addTo(map);   // 미제공: 작은 검은 점 (아래)
+const pinLayer = L.layerGroup().addTo(map);   // 캐시백 제공: 핀 (위)
+let groups = [], meMarker = null, meCircle = null, rangeCircle = null;
+
+const located = s => s.lat != null && s.lng != null;
+function dist(a, b) {
+  const R = 6371, r = x => x * Math.PI / 180;
+  const h = Math.sin(r(b.lat - a.lat) / 2) ** 2 + Math.cos(r(a.lat)) * Math.cos(r(b.lat)) * Math.sin(r(b.lng - a.lng) / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+function fmt(km) { return km < 1 ? Math.round(km * 1000) + 'm' : km.toFixed(1) + 'km'; }
+// 카카오맵 검색어: 법인 표기를 빼고 '이름 + 구'로 검색 → 장소 정보(유가 포함)로 이동
+function kakaoQuery(s) {
+  const gu = (s.a.match(/(동구|중구|서구|유성구|대덕구)/) || [''])[0];
+  return s.n.replace(/\(주\)|㈜|\(유\)|\(유한\)|주식회사|직영/g, ' ').replace(/\s+/g, ' ').trim() + ' ' + gu;
+}
+const kakaoInfo = s => `https://map.kakao.com/link/search/${encodeURIComponent(kakaoQuery(s))}`;
+const kakaoRoute = s => located(s) ? `https://map.kakao.com/link/to/${encodeURIComponent(s.n)},${s.lat},${s.lng}` : kakaoInfo(s);
+// 네이버: 앱이 있으면 앱 길찾기, 없으면 웹 검색으로
+function naverGo(id) {
+  const s = STATIONS[id];
+  const web = `https://map.naver.com/p/search/${encodeURIComponent(kakaoQuery(s))}`;
+  if (!located(s)) { location.href = web; return false; }
+  const app = `nmap://route/car?dlat=${s.lat}&dlng=${s.lng}&dname=${encodeURIComponent(s.n)}&appname=daejeon.gas`;
+  let left = false;
+  const onHide = () => { left = true; };
+  document.addEventListener('visibilitychange', onHide, {once: true});
+  location.href = app;
+  setTimeout(() => { if (!left && !document.hidden) location.href = web; }, 1500);
+  return false;
+}
+function popupHtml(g) {
+  return g.list.map(s => `<a class="pn${s.c ? '' : ' x'}" href="${kakaoInfo(s)}" target="_blank" rel="noopener">${s.n} ›</a>`).join('');
+}
+
+// 같은 좌표(같은 주소)의 가맹점은 마커 하나로 묶는다
+function buildGroups() {
+  const byKey = {};
+  STATIONS.filter(located).forEach(s => {
+    const k = s.lat.toFixed(5) + ',' + s.lng.toFixed(5);
+    (byKey[k] = byKey[k] || {lat: s.lat, lng: s.lng, list: []}).list.push(s);
+  });
+  groups = Object.values(byKey);
+  groups.forEach(g => {
+    g.cb = g.list.some(s => s.c);
+    if (g.cb) {
+      const n = g.list.filter(s => s.c).length;
+      g.marker = L.marker([g.lat, g.lng], {
+        icon: L.divIcon({className: '', iconSize: [26, 26], iconAnchor: [13, 26], popupAnchor: [0, -24],
+          html: `<div class="pin"><span>${n > 1 ? n : '⛽'}</span></div>`}),
+        zIndexOffset: 500});
+    } else {
+      g.marker = L.circleMarker([g.lat, g.lng], {radius: 4, color: '#fff', weight: 1, fillColor: '#222', fillOpacity: .9});
+    }
+    g.marker.bindPopup(() => popupHtml(g));
+    g.list.forEach(s => s.group = g);
+  });
+}
+
+// 거리 필터(전체/3km/5km)를 지도와 목록에 함께 적용
+function inRange(s) {
+  if (filter === 'all' || !me) return true;
+  return located(s) && dist(me, s) <= +filter;
+}
+function drawMap(fit) {
+  pinLayer.clearLayers(); dotLayer.clearLayers();
+  groups.forEach(g => { if (inRange(g)) (g.cb ? pinLayer : dotLayer).addLayer(g.marker); });
+  if (rangeCircle) { map.removeLayer(rangeCircle); rangeCircle = null; }
+  if (me && filter !== 'all') {
+    rangeCircle = L.circle([me.lat, me.lng], {radius: +filter * 1000, color: '#1f8f8a', weight: 1.5, dashArray: '5 5', fill: false, interactive: false}).addTo(map);
+    if (fit) map.fitBounds(rangeCircle.getBounds(), {padding: [10, 10]});
+  } else if (fit && me) {
+    const near = STATIONS.filter(s => s.c && located(s)).sort((a, b) => dist(me, a) - dist(me, b)).slice(0, 3);
+    map.fitBounds(L.latLngBounds([[me.lat, me.lng], ...near.map(s => [s.lat, s.lng])]).pad(0.25));
+  }
+}
+
+function render() {
+  let rows = STATIONS.filter(s => s.c);              // 목록에는 캐시백 제공 주유소만
+  rows.forEach(s => s.d = (me && located(s)) ? dist(me, s) : Infinity);
+  rows = rows.filter(inRange);
+  if (me) rows.sort((a, b) => a.d - b.d);
+  const list = document.getElementById('list');
+  list.innerHTML = rows.map(s => `
+    <div class="row${selected === s ? ' sel' : ''}" data-id="${s.id}">
+      <span class="d${located(s) ? '' : ' na'}">${located(s) ? (me ? fmt(s.d) : '') : '위치미상'}</span>
+      <span class="n">${s.n}</span>
+      <span class="a">${s.a.replace(/^대전\s*/, '')}</span>
+      <a class="go k" href="${kakaoRoute(s)}" target="_blank" rel="noopener">카카오</a>
+      <a class="go nv" href="#" onclick="return naverGo(${s.id})">네이버</a>
+    </div>`).join('') || '<div class="foot">이 거리 안에는 캐시백 주유소가 없어요.</div>';
+  const cbN = STATIONS.filter(s => s.c).length, mapN = STATIONS.filter(located).length, miss = STATIONS.length - mapN;
+  list.insertAdjacentHTML('beforeend', `<div class="foot">목록: 캐시백 제공 ${cbN}곳 · 지도: ${mapN}곳 (${DATA_SRC})${miss ? ` · 위치 미확인 ${miss}곳은 지도에 없음` : ''}.<br>개인이 만든 비공식 페이지로, 대전광역시·대전사랑카드(온통대전) 운영 측과 관계없어요. 가맹·캐시백 여부는 결제 전 공식 앱에서 확인하세요.<br>지도에서 핀을 누른 뒤 주유소 이름을 누르면 카카오맵 장소 정보(유가 등)로 이동해요. 위치는 브이월드 주소 좌표 기준이라 실제 입구와 조금 다를 수 있어요. 처음에는 연구단지 운동장 기준이고, 📍를 누르면 내 위치, 지도를 길게 누르면 그 지점 기준으로 다시 계산해요.</div>`);
+  list.querySelectorAll('.row').forEach(el => el.addEventListener('click', e => {
+    if (e.target.closest('a')) return;
+    const s = STATIONS[+el.dataset.id];
+    if (!located(s)) return;
+    selected = s;
+    list.querySelectorAll('.row.sel').forEach(x => x.classList.remove('sel'));
+    el.classList.add('sel');
+    map.setView([s.lat, s.lng], 15);
+    s.group.marker.openPopup();
+    document.getElementById('map').scrollIntoView({behavior: 'smooth'});
+  }));
+}
+
+function setMe(lat, lng, acc, label) {
+  me = {lat, lng};
+  if (!meMarker) meMarker = L.marker([lat, lng], {icon: L.divIcon({className: '', html: '<div class="me"></div>', iconSize: [16, 16], iconAnchor: [8, 8]}), zIndexOffset: 1000, interactive: false}).addTo(map);
+  else meMarker.setLatLng([lat, lng]);
+  if (meCircle) { map.removeLayer(meCircle); meCircle = null; }
+  if (acc) meCircle = L.circle([lat, lng], {radius: acc, color: '#2a7de1', weight: 1, fillOpacity: .08, interactive: false}).addTo(map);
+  drawMap(true); render();
+  const n = STATIONS.filter(s => s.c && located(s)).sort((a, b) => dist(me, a) - dist(me, b))[0];
+  document.getElementById('status').textContent = `${label} · 가장 가까운 캐시백: ${n.n} (${fmt(dist(me, n))})`;
+}
+
+function locate() {
+  const st = document.getElementById('status');
+  if (!navigator.geolocation) { st.textContent = '위치 확인을 지원하지 않는 브라우저예요. 지도를 길게 눌러 기준 위치를 정하세요.'; return; }
+  st.textContent = '위치를 확인하는 중…';
+  navigator.geolocation.getCurrentPosition(
+    p => setMe(p.coords.latitude, p.coords.longitude, p.coords.accuracy, '현재 위치 기준'),
+    err => { st.textContent = err.code === 1 ? '위치 권한이 꺼져 있어요. 허용하거나 지도를 길게 눌러 기준 위치를 정하세요.' : '위치를 못 가져왔어요. 📍를 다시 누르거나 지도를 길게 누르세요.'; },
+    {enableHighAccuracy: true, timeout: 12000, maximumAge: 60000});
+}
+
+map.on('contextmenu', e => setMe(e.latlng.lat, e.latlng.lng, 0, '지도에서 고른 위치 기준'));
+document.getElementById('locBtn').onclick = locate;
+const goHome = () => setMe(HOME.lat, HOME.lng, 0, HOME.name + ' 기준');
+document.getElementById('homeBtn').onclick = goHome;
+document.querySelectorAll('.chip').forEach(c => c.onclick = () => {
+  document.querySelectorAll('.chip').forEach(x => x.classList.remove('on'));
+  c.classList.add('on'); filter = c.dataset.f;
+  if (filter !== 'all' && !me) document.getElementById('status').textContent = '거리 필터는 위치를 확인한 뒤에 적용돼요. 📍를 누르거나 지도를 길게 누르세요.';
+  drawMap(true); render();
+});
+
+function parseCSV(text) {
+  const rows = []; let row = [], f = '', q = false;
+  text = text.replace(/^\uFEFF/, '');
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (q) { if (ch === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += ch; }
+    else if (ch === '"') q = true;
+    else if (ch === ',') { row.push(f); f = ''; }
+    else if (ch === '\n' || ch === '\r') { if (ch === '\r' && text[i + 1] === '\n') i++; row.push(f); rows.push(row); row = []; f = ''; }
+    else f += ch;
+  }
+  if (f || row.length) { row.push(f); rows.push(row); }
+  // 첫 줄이 '기준일,2026-11-18' 형식이면 데이터 기준일로 읽고 건너뛴다
+  if (rows.length && /^#?\s*기준일/.test((rows[0][0] || '').trim())) { const d = (rows.shift()[1] || '').trim(); if (d) DATA_DATE = d; }
+  const head = rows.shift().map(h => h.trim());
+  const col = name => head.indexOf(name);
+  const [cN, cA, cP, cC, cLa, cLn] = ['상호', '주소', '전화', '캐시백', '위도', '경도'].map(col);
+  return rows.filter(r => r.length > 1 && r[cN]).map(r => ({
+    n: r[cN].trim(), a: (r[cA] || '').trim(), p: (r[cP] || '').trim(),
+    c: /^(제공|o|y|yes|1|true|✓)$/i.test((r[cC] || '').trim()),
+    lat: isFinite(parseFloat(r[cLa])) ? parseFloat(r[cLa]) : null,
+    lng: isFinite(parseFloat(r[cLn])) ? parseFloat(r[cLn]) : null
+  })).map(s => (s.lat == null || s.lng == null) ? Object.assign(s, {lat: null, lng: null}) : s);
+}
+
+
+async function loadData() {
+  try {
+    const res = await fetch(DATA_URL + (DATA_URL.includes('?') ? '&' : '?') + 't=' + Date.now(), {cache: 'no-store'});
+    if (res.ok) { const list = parseCSV(await res.text()); if (list.length) { STATIONS = list; DATA_SRC = '파일에서 불러옴'; } }
+  } catch (e) { /* 파일이 없거나 막혀 있으면 내장 데이터 사용 */ }
+  STATIONS.forEach((s, i) => s.id = i);
+  showDate();
+  buildGroups(); goHome();   // 처음엔 운동장 기준, 📍를 누르면 내 위치 기준
+}
+loadData();
+</script>
+</body>
+</html>
