@@ -18,7 +18,8 @@ body{display:flex;flex-direction:column;padding-top:env(safe-area-inset-top)}
 header{background:var(--teal);color:#fff;padding:10px 14px;display:flex;align-items:center;gap:10px}
 header .ttl{flex:1;min-width:0}
 header h1{font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0;font-weight:700}
-header .dt{font-size:11.5px;opacity:.9;margin-top:1px;white-space:nowrap}
+header .dt{font-size:11.5px;opacity:.9;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+header .dt.warn{color:#ffe9a8;opacity:1}
 header button{border:0;border-radius:18px;padding:7px 10px;font-size:14px;font-weight:600;background:#fff;color:var(--teal-d)}
 #status{font-size:12.5px;padding:6px 14px;background:#e9f4f3;color:var(--teal-d);border-bottom:1px solid var(--line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #map{height:46vh;min-height:240px;flex:none;position:relative}
@@ -50,7 +51,7 @@ header button{border:0;border-radius:18px;padding:7px 10px;font-size:14px;font-w
 </style>
 </head>
 <body>
-<header><div class="ttl"><h1>⛽ 대전사랑카드 주유소</h1><div class="dt" id="dataDate"></div></div><button id="homeBtn">🏟 운동장</button><button id="locBtn">📍 내 위치</button></header>
+<header><div class="ttl"><h1>⛽ 대전사랑카드 주유소</h1><div class="dt" id="dataDate"></div><div class="dt warn">오류가 있을 수 있어요 · 결제 전 공식 앱 확인!</div></div><button id="locBtn">내 위치</button></header>
 <div id="status">위치를 확인하는 중…</div>
 <div id="map"><div class="legend"><i style="background:#1f8f8a;width:10px;height:10px"></i>캐시백 제공<i style="background:#222;width:7px;height:7px"></i>미제공</div></div>
 <div class="bar">
@@ -178,7 +179,7 @@ function render() {
       <a class="go nv" href="#" onclick="return naverGo(${s.id})">네이버</a>
     </div>`).join('') || '<div class="foot">이 거리 안에는 캐시백 주유소가 없어요.</div>';
   const cbN = STATIONS.filter(s => s.c).length, mapN = STATIONS.filter(located).length, miss = STATIONS.length - mapN;
-  list.insertAdjacentHTML('beforeend', `<div class="foot">목록: 캐시백 제공 ${cbN}곳 · 지도: ${mapN}곳 (${DATA_SRC})${miss ? ` · 위치 미확인 ${miss}곳은 지도에 없음` : ''}.<br>개인이 만든 비공식 페이지로, 대전광역시·대전사랑카드(온통대전) 운영 측과 관계없어요. 가맹·캐시백 여부는 결제 전 공식 앱에서 확인하세요.<br>지도에서 핀을 누른 뒤 주유소 이름을 누르면 카카오맵 장소 정보(유가 등)로 이동해요. 위치는 브이월드 주소 좌표 기준이라 실제 입구와 조금 다를 수 있어요. 처음에는 연구단지 운동장 기준이고, 📍를 누르면 내 위치, 지도를 길게 누르면 그 지점 기준으로 다시 계산해요.</div>`);
+  list.insertAdjacentHTML('beforeend', `<div class="foot">목록: 캐시백 제공 ${cbN}곳 · 지도: ${mapN}곳 (${DATA_SRC})${miss ? ` · 위치 미확인 ${miss}곳은 지도에 없음` : ''}.<br><b>이용 안내</b>: 이 페이지는 개인이 만든 비공식 참고용 페이지로, 대전광역시·대전사랑카드(온통대전) 운영 측과 관계없어요. 가맹점·캐시백 정보는 늦게 반영되거나 틀릴 수 있고, 지도 위치와 거리도 실제와 다를 수 있어요. 결제 전에 온통대전 앱이나 주유소에서 직접 확인해 주시고, 이용에 따른 판단과 책임은 이용자에게 있어요.<br>지도에서 핀을 누른 뒤 주유소 이름을 누르면 카카오맵 장소 정보(유가 등)로 이동해요. 위치는 브이월드 주소 좌표 기준이라 실제 입구와 조금 다를 수 있어요. 처음에는 연구단지 운동장 기준이고, 내 위치 버튼을 누르면 내 위치, 지도를 길게 누르면 그 지점 기준으로 다시 계산해요. 운동장 기준으로 돌아가려면 페이지를 새로 여세요.</div>`);
   list.querySelectorAll('.row').forEach(el => el.addEventListener('click', e => {
     if (e.target.closest('a')) return;
     const s = STATIONS[+el.dataset.id];
@@ -209,18 +210,17 @@ function locate() {
   st.textContent = '위치를 확인하는 중…';
   navigator.geolocation.getCurrentPosition(
     p => setMe(p.coords.latitude, p.coords.longitude, p.coords.accuracy, '현재 위치 기준'),
-    err => { st.textContent = err.code === 1 ? '위치 권한이 꺼져 있어요. 허용하거나 지도를 길게 눌러 기준 위치를 정하세요.' : '위치를 못 가져왔어요. 📍를 다시 누르거나 지도를 길게 누르세요.'; },
+    err => { st.textContent = err.code === 1 ? '위치 권한이 꺼져 있어요. 허용하거나 지도를 길게 눌러 기준 위치를 정하세요.' : '위치를 못 가져왔어요. 내 위치 버튼을 다시 누르거나 지도를 길게 누르세요.'; },
     {enableHighAccuracy: true, timeout: 12000, maximumAge: 60000});
 }
 
 map.on('contextmenu', e => setMe(e.latlng.lat, e.latlng.lng, 0, '지도에서 고른 위치 기준'));
 document.getElementById('locBtn').onclick = locate;
 const goHome = () => setMe(HOME.lat, HOME.lng, 0, HOME.name + ' 기준');
-document.getElementById('homeBtn').onclick = goHome;
 document.querySelectorAll('.chip').forEach(c => c.onclick = () => {
   document.querySelectorAll('.chip').forEach(x => x.classList.remove('on'));
   c.classList.add('on'); filter = c.dataset.f;
-  if (filter !== 'all' && !me) document.getElementById('status').textContent = '거리 필터는 위치를 확인한 뒤에 적용돼요. 📍를 누르거나 지도를 길게 누르세요.';
+  if (filter !== 'all' && !me) document.getElementById('status').textContent = '거리 필터는 위치를 확인한 뒤에 적용돼요. 내 위치 버튼을 누르거나 지도를 길게 누르세요.';
   drawMap(true); render();
 });
 
@@ -257,7 +257,7 @@ async function loadData() {
   } catch (e) { /* 파일이 없거나 막혀 있으면 내장 데이터 사용 */ }
   STATIONS.forEach((s, i) => s.id = i);
   showDate();
-  buildGroups(); goHome();   // 처음엔 운동장 기준, 📍를 누르면 내 위치 기준
+  buildGroups(); goHome();   // 처음엔 운동장 기준, 내 위치 버튼을 누르면 내 위치 기준
 }
 loadData();
 </script>
